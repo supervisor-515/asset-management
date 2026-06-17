@@ -1,0 +1,16 @@
+# OS / 에디터
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Python (아이콘 스크립트)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 임시
+*.log
+*.tmp

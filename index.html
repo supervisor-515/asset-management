@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>자산관리</title>
+
+  <!-- PWA (안드로이드 Chrome 전용) -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#3A4A3F" />
+  <link rel="icon" href="./icon-192.png" />
+
+  <!-- 폰트: 본문 Pretendard, 숫자 JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" />
+
+  <style>
+    :root {
+      --paper: #FBF7EF;
+      --paper-2: #F4EEE1;
+      --card: #FFFFFF;
+      --ink: #3A4A3F;
+      --ink-soft: #5B6B60;
+      --muted: #8A9089;
+      --line: #E4DDCD;
+      --gold: #C19A4C;
+      --gold-soft: #E7D6AD;
+      --asset: #2E7D6B;     /* 청록/올리브 자산 */
+      --asset-2: #6FA292;
+      --loan: #B05A4F;      /* 절제된 적색 부채 */
+      --up: #2E7D5B;        /* 증가 녹색 */
+      --down: #C0564A;      /* 감소 적색 */
+      --radius: 16px;
+      --shadow: 0 1px 2px rgba(58,74,63,.06), 0 6px 18px rgba(58,74,63,.06);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.5;
+      font-size: 15px;
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-font-smoothing: antialiased;
+    }
+    .mono, .num {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    button { font-family: inherit; cursor: pointer; }
+    h1, h2, h3 { margin: 0; font-weight: 700; }
+
+    /* 레이아웃 */
+    .app { max-width: 1100px; margin: 0 auto; padding: 0 16px 96px; }
+    header.topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(251,247,239,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      margin: 0 -16px 16px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
+    .brand .dot { width: 24px; height: 24px; border-radius: 7px; background: var(--ink); color: var(--gold); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+    .topbar .spacer { flex: 1; }
+
+    .icon-btn {
+      border: 1px solid var(--line); background: var(--card); color: var(--ink);
+      border-radius: 10px; padding: 7px 11px; font-size: 13px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .icon-btn:hover { border-color: var(--gold); }
+    #installBtn { background: var(--ink); color: var(--gold-soft); border-color: var(--ink); }
+    .hidden { display: none !important; }
+
+    .grid { display: grid; gap: 14px; }
+
+    /* 카드 */
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+    .card h2 { font-size: 14px; color: var(--ink-soft); font-weight: 700; letter-spacing: -.01em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+    /* 대시보드 */
+    .dash { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+    .hero { background: linear-gradient(155deg, #3F5046, #33433A); color: #F4EEE1; border: none; }
+    .hero .label { font-size: 13px; color: #BFC9C0; letter-spacing: .02em; }
+    .hero .net { font-size: 38px; font-weight: 800; letter-spacing: -.03em; margin: 4px 0 2px; }
+    .hero .delta { font-size: 14px; font-weight: 600; }
+    .hero .split { display: flex; gap: 22px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.14); }
+    .hero .split .k { font-size: 12px; color: #BFC9C0; }
+    .hero .split .v { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+    .hero .interest { margin-top: 14px; font-size: 13px; color: #E7D6AD; }
+
+    .up { color: var(--up); }
+    .down { color: var(--down); }
+    .hero .up { color: #9FE0BE; }
+    .hero .down { color: #F0B4AC; }
+
+    .chartbox { position: relative; height: 200px; }
+    .chartbox.line { height: 240px; }
+
+    /* 목록 */
+    .list-head { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; }
+    .list-head h2 { font-size: 17px; }
+    .list-head .spacer { flex: 1; }
+    .btn-add { background: var(--ink); color: var(--gold-soft); border: 1px solid var(--ink); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 700; }
+    .btn-add.loan { background: var(--card); color: var(--loan); border-color: var(--loan); }
+
+    .group-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 16px 4px 8px; display: flex; align-items: center; gap: 7px; }
+    .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .pill.asset { background: #E5F0EC; color: var(--asset); }
+    .pill.loan { background: #F6E6E3; color: var(--loan); }
+
+    .row {
+      display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+      align-items: center; padding: 13px 14px; border: 1px solid var(--line);
+      border-radius: 12px; background: var(--card); margin-bottom: 8px; cursor: pointer;
+      transition: border-color .12s;
+    }
+    .row:hover { border-color: var(--gold); }
+    .row .name { font-weight: 700; letter-spacing: -.01em; }
+    .row .sub { font-size: 12px; color: var(--muted); grid-column: 1; }
+    .row .amount { font-size: 17px; font-weight: 700; text-align: right; letter-spacing: -.02em; }
+    .row .amount.loan { color: var(--loan); }
+    .row .chg { font-size: 12px; text-align: right; grid-column: 2; }
+    .row .actions { grid-column: 1 / -1; display: flex; gap: 6px; margin-top: 6px; }
+    .mini-btn { border: 1px solid var(--line); background: var(--paper-2); border-radius: 8px; padding: 5px 9px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+    .mini-btn:hover { border-color: var(--gold); color: var(--ink); }
+    .mini-btn.danger:hover { border-color: var(--down); color: var(--down); }
+
+    .empty { text-align: center; color: var(--muted); padding: 28px 10px; font-size: 14px; }
+
+    /* 모달 / 상세 패널 */
+    .overlay { position: fixed; inset: 0; background: rgba(40,50,44,.45); z-index: 50; display: none; }
+    .overlay.open { display: block; }
+    .sheet {
+      position: fixed; z-index: 60; background: var(--paper); right: 0; top: 0; bottom: 0;
+      width: min(560px, 100%); box-shadow: -10px 0 40px rgba(0,0,0,.18);
+      transform: translateX(100%); transition: transform .22s ease; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .sheet.open { transform: translateX(0); }
+    .sheet header { position: sticky; top: 0; background: var(--paper); border-bottom: 1px solid var(--line); padding: 14px 16px; display: flex; align-items: center; gap: 10px; z-index: 2; }
+    .sheet header h2 { font-size: 17px; }
+    .sheet header .spacer { flex: 1; }
+    .sheet .body { padding: 16px; }
+    .close-x { border: none; background: var(--paper-2); width: 32px; height: 32px; border-radius: 9px; font-size: 18px; color: var(--ink-soft); }
+
+    /* 표 (시계열) */
+    .ts { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .ts th { font-size: 11px; color: var(--muted); font-weight: 700; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    .ts td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+    .ts input { width: 100%; border: 1px solid transparent; background: transparent; padding: 7px 8px; border-radius: 8px; font: inherit; color: var(--ink); }
+    .ts input:hover { border-color: var(--line); }
+    .ts input:focus { outline: none; border-color: var(--gold); background: #fff; }
+    .ts input.num { text-align: right; }
+    .ts .del { border: none; background: none; color: var(--muted); font-size: 16px; padding: 4px 6px; border-radius: 6px; }
+    .ts .del:hover { color: var(--down); background: #F6E6E3; }
+    .ts tr.addrow { background: var(--paper-2); }
+    .ts tr.addrow input { border-color: var(--line); background: #fff; }
+    .colw-date { width: 130px; } .colw-act { width: 34px; }
+
+    /* 필드 */
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-bottom: 5px; }
+    .field input, .field select {
+      width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      padding: 10px 12px; font: inherit; color: var(--ink);
+    }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--gold); }
+    .field.num input { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+    .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .section-label { font-size: 12px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: .06em; margin: 22px 0 10px; }
+
+    /* 이자 요약 */
+    .ical { background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    .ical .line { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; font-size: 14px; }
+    .ical .line .k { color: var(--ink-soft); }
+    .ical .line .v { font-weight: 700; letter-spacing: -.02em; }
+    .ical .line.total { border-top: 1px dashed var(--line); margin-top: 6px; padding-top: 10px; }
+    .ical .warn { color: var(--down); font-size: 12.5px; margin-top: 8px; font-weight: 600; }
+
+    .btn-primary { width: 100%; background: var(--ink); color: var(--gold-soft); border: none; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 8px; }
+    .btn-ghost { width: 100%; background: transparent; color: var(--down); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 600; margin-top: 10px; }
+    .btn-ghost:hover { border-color: var(--down); }
+
+    /* 토스트 */
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: #F4EEE1; padding: 12px 18px; border-radius: 12px;
+      font-size: 14px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      z-index: 100; opacity: 0; pointer-events: none; transition: all .25s; display: flex; align-items: center; gap: 12px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    .toast button { background: var(--gold); color: var(--ink); border: none; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; }
+
+    .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
+
+    @media (max-width: 720px) {
+      .dash { grid-template-columns: 1fr; }
+      .hero .net { font-size: 32px; }
+      .app { padding: 0 12px 96px; }
+      header.topbar { margin: 0 -12px 14px; padding: 11px 12px; }
+      .frow { grid-template-columns: 1fr; }
+      .topbar .label-txt { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="dot">₩</span><span>자산관리</span></div>
+      <div class="spacer"></div>
+      <button id="installBtn" class="icon-btn hidden">⬇ <span class="label-txt">앱 설치</span></button>
+      <button id="exportBtn" class="icon-btn">⤓ <span class="label-txt">내보내기</span></button>
+      <button id="importBtn" class="icon-btn">⤒ <span class="label-txt">가져오기</span></button>
+      <button id="resetBtn" class="icon-btn">⟲ <span class="label-txt">초기화</span></button>
+      <input id="importFile" type="file" accept="application/json,.json" class="hidden" />
+    </header>
+
+    <!-- 대시보드 -->
+    <section class="dash">
+      <div class="card hero">
+        <div class="label">순자산</div>
+        <div class="net num" id="netWorth">0원</div>
+        <div class="delta num" id="netDelta">—</div>
+        <div class="split">
+          <div><div class="k">총자산</div><div class="v num" id="totalAssets">0원</div></div>
+          <div><div class="k">총부채</div><div class="v num" id="totalLoans">0원</div></div>
+        </div>
+        <div class="interest" id="monthInterest">이번 달 총 이자 — </div>
+      </div>
+      <div class="card">
+        <h2>자산 구성</h2>
+        <div class="chartbox"><canvas id="donut"></canvas></div>
+      </div>
+    </section>
+
+    <div class="card" style="margin-top:14px">
+      <h2>순자산 추이</h2>
+      <div class="chartbox line"><canvas id="trend"></canvas></div>
+    </div>
+
+    <!-- 목록 -->
+    <div class="list-head">
+      <h2>자산 · 대출</h2>
+      <div class="spacer"></div>
+      <button class="btn-add" id="addAssetBtn">+ 자산 추가</button>
+      <button class="btn-add loan" id="addLoanBtn">+ 대출 추가</button>
+    </div>
+    <div id="listArea"></div>
+
+    <div class="foot">데이터는 이 기기(localStorage)에만 저장됩니다 · 오프라인 동작</div>
+  </div>
+
+  <!-- 상세/편집 시트 -->
+  <div class="overlay" id="overlay"></div>
+  <aside class="sheet" id="sheet">
+    <header>
+      <h2 id="sheetTitle">상세</h2>
+      <div class="spacer"></div>
+      <button class="close-x" id="sheetClose">×</button>
+    </header>
+    <div class="body" id="sheetBody"></div>
+  </aside>
+
+  <!-- 토스트 -->
+  <div class="toast" id="toast"><span id="toastMsg"></span><button id="toastAction" class="hidden"></button></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+  /* ============================================================
+     자산관리 PWA — 순수 Vanilla JS, 상태관리 직접 구현
+     ============================================================ */
+  'use strict';
+
+  const STORE_KEY = 'asset-app-data';
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+
+  /* ---------- 유틸 ---------- */
+  function uuid() {
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
+  const fmtWon = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR') + '원';
+  const fmtSigned = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString('ko-KR') + '원';
+  const fmtPct = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toFixed(1) + '%';
+
+  // 금액 파싱: 콤마/공백/원 제거, 음수 방지
+  function parseAmount(str) {
+    if (typeof str === 'number') return Math.max(0, Math.round(str));
+    const cleaned = String(str == null ? '' : str).replace(/[,\s원₩]/g, '');
+    const n = parseFloat(cleaned);
+    if (!isFinite(n) || isNaN(n)) return 0;
+    return Math.max(0, Math.round(n));
+  }
+  function validDate(str) { return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(new Date(str).getTime()); }
+
+  // 최신 기록(날짜 기준)
+  function latest(records, key) {
+    if (!records || !records.length) return null;
+    return records.slice().sort((a, b) => a.date < b.date ? 1 : -1)[0];
+  }
+  function latestRate(hist) {
+    if (!hist || !hist.length) return null;
+    return hist.slice().sort((a, b) => a.date < b.date ? 1 : -1)[0];
+  }
+  // 직전 대비 증감 (최신 - 그 이전)
+  function prevDelta(records, field) {
+    if (!records || records.length < 2) return null;
+    const s = records.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    return (Number(s[0][field]) || 0) - (Number(s[1][field]) || 0);
+  }
+
+  // 잔여 개월수 (오늘 ~ 만기), 음수 가드
+  function monthsUntil(maturity) {
+    if (!validDate(maturity)) return 0;
+    const now = new Date(todayISO());
+    const m = new Date(maturity);
+    let months = (m.getFullYear() - now.getFullYear()) * 12 + (m.getMonth() - now.getMonth());
+    if (m.getDate() < now.getDate()) months -= 1;
+    return Math.max(0, months);
+  }
+
+  const CAT_LABEL = { real_estate: '부동산', financial: '금융자산', cash: '현금성' };
+  const CAT_ORDER = ['real_estate', 'financial', 'cash'];
+  const CAT_COLOR = { real_estate: '#2E7D6B', financial: '#6FA292', cash: '#C19A4C' };
+  const REPAY_LABEL = { bullet: '만기일시상환', equal_payment: '원리금균등', equal_principal: '원금균등' };
+  const RATE_LABEL = { fixed: '고정금리', variable: '변동금리' };
+
+  /* ---------- 상태 ---------- */
+  let state = { assets: [], loans: [] };
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch (e) { console.error('저장 실패', e); toast('저장 실패: 저장 공간 부족'); }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) { state = JSON.parse(raw); state.assets ||= []; state.loans ||= []; return true; }
+    } catch (e) { console.error('불러오기 실패', e); }
+    return false;
+  }
+
+  /* ---------- 더미 샘플 데이터 ---------- */
+  function seed() {
+    state = {
+      assets: [
+        { id: uuid(), name: '래미안 아파트', category: 'real_estate', subType: '아파트',
+          records: [
+            { date: '2026-01-01', amount: 820000000, note: '연초 시세' },
+            { date: '2026-04-01', amount: 845000000, note: '' },
+            { date: '2026-06-01', amount: 860000000, note: '실거래 반영' }
+          ] },
+        { id: uuid(), name: '삼성전자', category: 'financial', subType: '주식',
+          records: [
+            { date: '2026-03-01', amount: 18500000, note: '' },
+            { date: '2026-06-01', amount: 21200000, note: '' }
+          ] },
+        { id: uuid(), name: '하나은행 예금', category: 'cash', subType: '예금',
+          records: [
+            { date: '2026-02-01', amount: 50000000, note: '' },
+            { date: '2026-06-01', amount: 50800000, note: '이자 가산' }
+          ] }
+      ],
+      loans: [
+        { id: uuid(), name: '주택담보대출', lender: '국민은행',
+          rateType: 'variable', repaymentType: 'equal_payment',
+          startDate: '2025-01-10', maturityDate: '2055-01-10',
+          rateHistory: [ { date: '2025-01-10', rate: 3.85 }, { date: '2026-04-01', rate: 4.10 } ],
+          records: [
+            { date: '2026-01-01', balance: 408000000, note: '' },
+            { date: '2026-06-01', balance: 400000000, note: '' }
+          ] }
+      ]
+    };
+    save();
+  }
+
+  /* ---------- 집계 ---------- */
+  function totalAssets() {
+    return state.assets.reduce((s, a) => { const r = latest(a.records); return s + (r ? Number(r.amount) || 0 : 0); }, 0);
+  }
+  function totalLoans() {
+    return state.loans.reduce((s, l) => { const r = latest(l.records); return s + (r ? Number(r.balance) || 0 : 0); }, 0);
+  }
+
+  // 시점 t의 순자산 (날짜≤t 최신값 합)
+  function valueAtDate(records, field, t) {
+    let best = null;
+    for (const r of records || []) {
+      if (r.date <= t && (!best || r.date > best.date)) best = r;
+    }
+    return best ? (Number(best[field]) || 0) : 0;
+  }
+  function netWorthSeries() {
+    const dates = new Set();
+    state.assets.forEach((a) => (a.records || []).forEach((r) => dates.add(r.date)));
+    state.loans.forEach((l) => (l.records || []).forEach((r) => dates.add(r.date)));
+    const sorted = [...dates].filter(validDate).sort();
+    return sorted.map((t) => {
+      const assets = state.assets.reduce((s, a) => s + valueAtDate(a.records, 'amount', t), 0);
+      const loans = state.loans.reduce((s, l) => s + valueAtDate(l.records, 'balance', t), 0);
+      return { date: t, net: assets - loans };
+    });
+  }
+
+  /* ---------- 대출 이자 계산 ---------- */
+  function loanInterest(loan) {
+    const rec = latest(loan.records);
+    const P = rec ? Number(rec.balance) || 0 : 0;
+    const rateObj = latestRate(loan.rateHistory);
+    const annual = rateObj ? Number(rateObj.rate) || 0 : 0;
+    const r = annual / 100 / 12;          // 월이율
+    const n = monthsUntil(loan.maturityDate); // 잔여 개월
+    const expired = validDate(loan.maturityDate) && new Date(loan.maturityDate) < new Date(todayISO());
+
+    const monthInterest = Math.round(P * r);
+    let monthlyPayment = 0, principalPart = 0, interestPart = monthInterest, totalInterest = 0;
+
+    if (P <= 0) {
+      return { P, annual, n, expired, monthInterest: 0, monthlyPayment: 0, principalPart: 0, interestPart: 0, totalInterest: 0 };
+    }
+
+    if (loan.repaymentType === 'bullet') {
+      monthlyPayment = monthInterest;           // 이자만 납입
+      principalPart = 0; interestPart = monthInterest;
+      totalInterest = n > 0 ? monthInterest * n : 0;
+    } else if (loan.repaymentType === 'equal_payment') {
+      if (n <= 0) {
+        monthlyPayment = P + monthInterest; principalPart = P; interestPart = monthInterest; totalInterest = monthInterest;
+      } else if (r === 0) {
+        monthlyPayment = Math.round(P / n); principalPart = monthlyPayment; interestPart = 0; totalInterest = 0;
+      } else {
+        const pow = Math.pow(1 + r, n);
+        monthlyPayment = Math.round(P * r * pow / (pow - 1));
+        interestPart = monthInterest;
+        principalPart = monthlyPayment - interestPart;
+        totalInterest = Math.round(monthlyPayment * n - P);
+      }
+    } else if (loan.repaymentType === 'equal_principal') {
+      if (n <= 0) {
+        principalPart = P; interestPart = monthInterest; monthlyPayment = P + monthInterest; totalInterest = monthInterest;
+      } else {
+        principalPart = Math.round(P / n);
+        interestPart = monthInterest;
+        monthlyPayment = principalPart + interestPart;
+        totalInterest = Math.round(r * P * (n + 1) / 2);
+      }
+    }
+    // NaN/Infinity 최종 가드
+    const guard = (v) => (isFinite(v) ? v : 0);
+    return {
+      P, annual, n, expired,
+      monthInterest: guard(monthInterest),
+      monthlyPayment: guard(monthlyPayment),
+      principalPart: guard(principalPart),
+      interestPart: guard(interestPart),
+      totalInterest: guard(totalInterest)
+    };
+  }
+  function monthTotalInterest() {
+    return state.loans.reduce((s, l) => s + loanInterest(l).monthInterest, 0);
+  }
+
+  /* ============================================================
+     렌더링
+     ============================================================ */
+  let donutChart = null, trendChart = null;
+
+  function renderDashboard() {
+    const ta = totalAssets(), tl = totalLoans(), net = ta - tl;
+    document.getElementById('totalAssets').textContent = fmtWon(ta);
+    document.getElementById('totalLoans').textContent = fmtWon(tl);
+    document.getElementById('netWorth').textContent = fmtWon(net);
+
+    // 증감: 순자산 추이의 마지막 - 직전
+    const series = netWorthSeries();
+    const deltaEl = document.getElementById('netDelta');
+    if (series.length >= 2) {
+      const d = series[series.length - 1].net - series[series.length - 2].net;
+      const base = series[series.length - 2].net;
+      const pct = base !== 0 ? (d / Math.abs(base)) * 100 : 0;
+      deltaEl.className = 'delta num ' + (d > 0 ? 'up' : d < 0 ? 'down' : '');
+      deltaEl.textContent = `${fmtSigned(d)} (${fmtPct(pct)}) · 직전 기록 대비`;
+    } else {
+      deltaEl.className = 'delta num';
+      deltaEl.textContent = '기록이 쌓이면 증감이 표시됩니다';
+    }
+
+    const mi = monthTotalInterest();
+    document.getElementById('monthInterest').textContent = '이번 달 총 이자 부담 ' + fmtWon(mi);
+
+    renderDonut();
+    renderTrend(series);
+  }
+
+  function renderDonut() {
+    const totals = { real_estate: 0, financial: 0, cash: 0 };
+    state.assets.forEach((a) => { const r = latest(a.records); if (r) totals[a.category] = (totals[a.category] || 0) + (Number(r.amount) || 0); });
+    const labels = [], data = [], colors = [];
+    CAT_ORDER.forEach((c) => { if (totals[c] > 0) { labels.push(CAT_LABEL[c]); data.push(totals[c]); colors.push(CAT_COLOR[c]); } });
+
+    if (donutChart) donutChart.destroy();
+    const ctx = document.getElementById('donut');
+    if (!data.length) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
+    donutChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Pretendard', size: 12 }, color: '#5B6B60', padding: 12, usePointStyle: true } },
+          tooltip: { callbacks: { label: (c) => ` ${c.label}: ${fmtWon(c.parsed)}` } }
+        }
+      }
+    });
+  }
+
+  function renderTrend(series) {
+    if (trendChart) trendChart.destroy();
+    const ctx = document.getElementById('trend');
+    if (series.length < 1) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
+    trendChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: series.map((s) => s.date),
+        datasets: [{
+          label: '순자산', data: series.map((s) => s.net),
+          borderColor: '#3A4A3F', backgroundColor: 'rgba(58,74,63,.08)',
+          fill: true, tension: .25, pointRadius: 3, pointBackgroundColor: '#C19A4C', borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ' 순자산 ' + fmtWon(c.parsed.y) } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8A9089', maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+          y: { grid: { color: '#EFE9DA' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8A9089', callback: (v) => (v / 100000000).toFixed(1) + '억' } }
+        }
+      }
+    });
+  }
+
+  function renderList() {
+    const area = document.getElementById('listArea');
+    area.innerHTML = '';
+
+    // 자산: 카테고리별 그룹
+    CAT_ORDER.forEach((cat) => {
+      const items = state.assets.filter((a) => a.category === cat);
+      if (!items.length) return;
+      const title = document.createElement('div');
+      title.className = 'group-title';
+      title.innerHTML = `<span class="pill asset">자산</span> ${CAT_LABEL[cat]}`;
+      area.appendChild(title);
+      items.forEach((a) => area.appendChild(assetRow(a)));
+    });
+
+    // 대출 그룹
+    if (state.loans.length) {
+      const title = document.createElement('div');
+      title.className = 'group-title';
+      title.innerHTML = `<span class="pill loan">대출</span> 부채`;
+      area.appendChild(title);
+      state.loans.forEach((l) => area.appendChild(loanRow(l)));
+    }
+
+    if (!state.assets.length && !state.loans.length) {
+      area.innerHTML = '<div class="empty">아직 항목이 없습니다.<br>위의 [+ 자산 추가] / [+ 대출 추가]로 시작하세요.</div>';
+    }
+  }
+
+  function changeBadge(delta) {
+    if (delta == null) return '<span class="chg" style="color:var(--muted)">기록 1건</span>';
+    const cls = delta > 0 ? 'up' : delta < 0 ? 'down' : '';
+    return `<span class="chg num ${cls}">${fmtSigned(delta)}</span>`;
+  }
+
+  function assetRow(a) {
+    const r = latest(a.records);
+    const cur = r ? Number(r.amount) || 0 : 0;
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `
+      <div class="name">${escapeHtml(a.name)}</div>
+      <div class="amount num">${fmtWon(cur)}</div>
+      <div class="sub">${escapeHtml(a.subType || CAT_LABEL[a.category])} · ${r ? r.date : '기록없음'}</div>
+      ${changeBadge(prevDelta(a.records, 'amount'))}
+      <div class="actions">
+        <button class="mini-btn" data-act="detail">시계열 기록</button>
+        <button class="mini-btn" data-act="edit">수정</button>
+        <button class="mini-btn" data-act="add">기록추가</button>
+        <button class="mini-btn danger" data-act="del">삭제</button>
+      </div>`;
+    div.addEventListener('click', (e) => {
+      const act = e.target.dataset.act;
+      if (!act) { openAssetDetail(a.id); return; }
+      e.stopPropagation();
+      if (act === 'detail') openAssetDetail(a.id);
+      else if (act === 'edit') openAssetForm(a.id);
+      else if (act === 'add') { openAssetDetail(a.id); }
+      else if (act === 'del') deleteAsset(a.id);
+    });
+    return div;
+  }
+
+  function loanRow(l) {
+    const r = latest(l.records);
+    const cur = r ? Number(r.balance) || 0 : 0;
+    const ic = loanInterest(l);
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `
+      <div class="name">${escapeHtml(l.name)}</div>
+      <div class="amount loan num">${fmtWon(cur)}</div>
+      <div class="sub">${escapeHtml(l.lender || '')} · ${REPAY_LABEL[l.repaymentType]} · 월이자 ${fmtWon(ic.monthInterest)}</div>
+      ${changeBadge(prevDelta(l.records, 'balance'))}
+      <div class="actions">
+        <button class="mini-btn" data-act="detail">시계열·이자</button>
+        <button class="mini-btn" data-act="edit">수정</button>
+        <button class="mini-btn danger" data-act="del">삭제</button>
+      </div>`;
+    div.addEventListener('click', (e) => {
+      const act = e.target.dataset.act;
+      if (!act) { openLoanDetail(l.id); return; }
+      e.stopPropagation();
+      if (act === 'detail') openLoanDetail(l.id);
+      else if (act === 'edit') openLoanForm(l.id);
+      else if (act === 'del') deleteLoan(l.id);
+    });
+    return div;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function renderAll() { renderDashboard(); renderList(); }
+
+  /* ============================================================
+     시트(상세/폼)
+     ============================================================ */
+  const overlay = document.getElementById('overlay');
+  const sheet = document.getElementById('sheet');
+  function openSheet(title, html) {
+    document.getElementById('sheetTitle').textContent = title;
+    document.getElementById('sheetBody').innerHTML = html;
+    overlay.classList.add('open'); sheet.classList.add('open');
+  }
+  function closeSheet() { overlay.classList.remove('open'); sheet.classList.remove('open'); }
+  overlay.addEventListener('click', closeSheet);
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+
+  /* ---------- 시계열 표 (자산/대출 공용) ---------- */
+  // field: 'amount'(자산) | 'balance'(대출)
+  function timeseriesTable(records, field) {
+    const sorted = (records || []).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    const rows = sorted.map((rec, i) => `
+      <tr data-i="${i}">
+        <td class="colw-date"><input type="date" value="${rec.date}" data-k="date"></td>
+        <td><input class="num" inputmode="numeric" value="${(Number(rec[field]) || 0).toLocaleString('ko-KR')}" data-k="${field}"></td>
+        <td><input value="${escapeHtml(rec.note || '')}" data-k="note" placeholder="메모"></td>
+        <td class="colw-act"><button class="del" data-del="${i}" title="삭제">🗑</button></td>
+      </tr>`).join('');
+    return `
+      <table class="ts">
+        <thead><tr><th>날짜</th><th style="text-align:right">${field === 'balance' ? '잔액' : '금액'}</th><th>메모</th><th></th></tr></thead>
+        <tbody id="tsBody">
+          ${rows || ''}
+          <tr class="addrow">
+            <td class="colw-date"><input type="date" id="newDate" value="${todayISO()}"></td>
+            <td><input class="num" id="newAmt" inputmode="numeric" placeholder="0"></td>
+            <td><input id="newNote" placeholder="새 기록 메모"></td>
+            <td class="colw-act"><button class="del" id="tsAdd" title="추가" style="color:var(--asset)">＋</button></td>
+          </tr>
+        </tbody>
+      </table>`;
+  }
+
+  // 시계열 표의 편집/추가/삭제 이벤트 바인딩
+  function bindTimeseries(records, field, onChange) {
+    const body = document.getElementById('tsBody');
+    if (!body) return;
+    const sorted = () => (records.slice().sort((a, b) => a.date < b.date ? 1 : -1));
+
+    // 인라인 편집
+    body.querySelectorAll('tr[data-i] input').forEach((inp) => {
+      inp.addEventListener('change', () => {
+        const tr = inp.closest('tr');
+        const i = Number(tr.dataset.i);
+        const rec = sorted()[i];
+        if (!rec) return;
+        const k = inp.dataset.k;
+        if (k === 'date') {
+          if (!validDate(inp.value)) { toast('날짜 형식이 올바르지 않습니다'); inp.value = rec.date; return; }
+          // 같은 날짜 충돌 → 덮어쓰기 확인
+          const clash = records.find((r) => r !== rec && r.date === inp.value);
+          if (clash) {
+            if (!confirm(`${inp.value} 기록이 이미 있습니다. 덮어쓸까요?`)) { inp.value = rec.date; return; }
+            records.splice(records.indexOf(clash), 1);
+          }
+          rec.date = inp.value;
+        } else if (k === 'note') {
+          rec.note = inp.value;
+        } else {
+          rec[field] = parseAmount(inp.value);
+        }
+        onChange();
+      });
+    });
+
+    // 행 삭제
+    body.querySelectorAll('button[data-del]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.del);
+        const rec = sorted()[i];
+        if (!rec) return;
+        if (records.length <= 1) { if (!confirm('마지막 기록입니다. 삭제할까요?')) return; }
+        records.splice(records.indexOf(rec), 1);
+        onChange();
+      });
+    });
+
+    // 새 행 추가
+    const addBtn = document.getElementById('tsAdd');
+    if (addBtn) addBtn.addEventListener('click', () => {
+      const date = document.getElementById('newDate').value;
+      const amt = parseAmount(document.getElementById('newAmt').value);
+      const note = document.getElementById('newNote').value;
+      if (!validDate(date)) { toast('날짜를 확인하세요'); return; }
+      const clash = records.find((r) => r.date === date);
+      if (clash) {
+        if (!confirm(`${date} 기록이 이미 있습니다. 덮어쓸까요?`)) return;
+        clash[field] = amt; clash.note = note;
+      } else {
+        records.push({ date, [field]: amt, note });
+      }
+      onChange();
+    });
+  }
+
+  /* ---------- 자산 상세 ---------- */
+  function openAssetDetail(id) {
+    const a = state.assets.find((x) => x.id === id);
+    if (!a) return;
+    const r = latest(a.records);
+    const html = `
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div><div style="font-size:12px;color:var(--muted)">${escapeHtml(a.subType || '')} · ${CAT_LABEL[a.category]}</div>
+          <div style="font-size:24px;font-weight:800" class="num">${fmtWon(r ? r.amount : 0)}</div></div>
+          <button class="mini-btn" id="aEdit">기본정보 수정</button>
+        </div>
+      </div>
+      <div class="section-label">날짜별 금액 기록</div>
+      ${timeseriesTable(a.records, 'amount')}
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">셀을 눌러 바로 수정하고, 맨 아래 입력행으로 새 기록을 추가하세요. 날짜순 자동 정렬됩니다.</p>
+    `;
+    openSheet(a.name, html);
+    document.getElementById('aEdit').addEventListener('click', () => openAssetForm(id));
+    bindTimeseries(a.records, 'amount', () => { save(); openAssetDetail(id); renderAll(); });
+  }
+
+  /* ---------- 대출 상세 (이자 계산 포함) ---------- */
+  function openLoanDetail(id) {
+    const l = state.loans.find((x) => x.id === id);
+    if (!l) return;
+    const ic = loanInterest(l);
+    const rate = latestRate(l.rateHistory);
+    const rateRows = (l.rateHistory || []).slice().sort((a, b) => a.date < b.date ? 1 : -1)
+      .map((h, i) => `<tr data-ri="${i}">
+        <td class="colw-date"><input type="date" value="${h.date}" data-rk="date"></td>
+        <td><input class="num" inputmode="decimal" value="${h.rate}" data-rk="rate"> %</td>
+        <td class="colw-act"><button class="del" data-rdel="${i}">🗑</button></td></tr>`).join('');
+
+    const interestDetail = (() => {
+      if (ic.P <= 0) return '<div class="warn">현재 잔액이 0원입니다.</div>';
+      let lines = `<div class="line"><span class="k">현재 잔액</span><span class="v num">${fmtWon(ic.P)}</span></div>
+        <div class="line"><span class="k">적용 금리(연)</span><span class="v num">${ic.annual.toFixed(2)}%</span></div>
+        <div class="line"><span class="k">잔여 기간</span><span class="v num">${ic.n}개월</span></div>
+        <div class="line total"><span class="k">이번 달 이자</span><span class="v num down">${fmtWon(ic.monthInterest)}</span></div>`;
+      if (l.repaymentType === 'bullet') {
+        lines += `<div class="line"><span class="k">월 납입(이자만)</span><span class="v num">${fmtWon(ic.monthlyPayment)}</span></div>
+          <div class="line"><span class="k">원금</span><span class="v num">만기 일시상환</span></div>`;
+      } else {
+        lines += `<div class="line"><span class="k">월 납입금</span><span class="v num">${fmtWon(ic.monthlyPayment)}</span></div>
+          <div class="line"><span class="k">└ 원금분</span><span class="v num">${fmtWon(ic.principalPart)}</span></div>
+          <div class="line"><span class="k">└ 이자분</span><span class="v num">${fmtWon(ic.interestPart)}</span></div>`;
+      }
+      lines += `<div class="line total"><span class="k">잔여 만기까지 총 예상 이자</span><span class="v num down">${fmtWon(ic.totalInterest)}</span></div>`;
+      if (ic.expired) lines += '<div class="warn">⚠ 만기가 경과했습니다. 잔여기간 기준 계산이 제한됩니다.</div>';
+      else if (ic.n === 0) lines += '<div class="warn">⚠ 잔여 개월이 0입니다(이번 달 만기).</div>';
+      return lines;
+    })();
+
+    const html = `
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div><div style="font-size:12px;color:var(--muted)">${escapeHtml(l.lender || '')} · ${RATE_LABEL[l.rateType]} · ${REPAY_LABEL[l.repaymentType]}</div>
+          <div style="font-size:24px;font-weight:800;color:var(--loan)" class="num">${fmtWon(ic.P)}</div>
+          <div style="font-size:12px;color:var(--muted)">만기 ${l.maturityDate || '—'}</div></div>
+          <button class="mini-btn" id="lEdit">기본정보 수정</button>
+        </div>
+      </div>
+
+      <div class="section-label">이자 자동 계산</div>
+      <div class="ical">${interestDetail}</div>
+
+      <div class="section-label">금리 이력 ${l.rateType === 'variable' ? '(변동금리)' : ''}</div>
+      <table class="ts">
+        <thead><tr><th>적용일</th><th>연이율</th><th></th></tr></thead>
+        <tbody id="rateBody">
+          ${rateRows}
+          <tr class="addrow">
+            <td class="colw-date"><input type="date" id="newRateDate" value="${todayISO()}"></td>
+            <td><input class="num" id="newRate" inputmode="decimal" placeholder="3.50"> %</td>
+            <td class="colw-act"><button class="del" id="rateAdd" style="color:var(--asset)">＋</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-label">날짜별 잔액 기록</div>
+      ${timeseriesTable(l.records, 'balance')}
+    `;
+    openSheet(l.name, html);
+    document.getElementById('lEdit').addEventListener('click', () => openLoanForm(id));
+    bindTimeseries(l.records, 'balance', () => { save(); openLoanDetail(id); renderAll(); });
+    bindRateHistory(l, id);
+  }
+
+  function bindRateHistory(l, id) {
+    const body = document.getElementById('rateBody');
+    if (!body) return;
+    const sorted = () => l.rateHistory.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    body.querySelectorAll('tr[data-ri] input').forEach((inp) => {
+      inp.addEventListener('change', () => {
+        const i = Number(inp.closest('tr').dataset.ri);
+        const h = sorted()[i]; if (!h) return;
+        if (inp.dataset.rk === 'date') {
+          if (!validDate(inp.value)) { toast('날짜 확인'); inp.value = h.date; return; }
+          h.date = inp.value;
+        } else {
+          const v = parseFloat(String(inp.value).replace(/[,\s%]/g, ''));
+          h.rate = isFinite(v) && v >= 0 ? v : 0;
+        }
+        save(); openLoanDetail(id); renderAll();
+      });
+    });
+    body.querySelectorAll('button[data-rdel]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.rdel); const h = sorted()[i]; if (!h) return;
+        if (l.rateHistory.length <= 1) { toast('금리 이력은 최소 1건 필요합니다'); return; }
+        l.rateHistory.splice(l.rateHistory.indexOf(h), 1);
+        save(); openLoanDetail(id); renderAll();
+      });
+    });
+    const add = document.getElementById('rateAdd');
+    if (add) add.addEventListener('click', () => {
+      const date = document.getElementById('newRateDate').value;
+      const v = parseFloat(String(document.getElementById('newRate').value).replace(/[,\s%]/g, ''));
+      if (!validDate(date)) { toast('날짜 확인'); return; }
+      if (!isFinite(v) || v < 0) { toast('금리를 확인하세요'); return; }
+      const clash = l.rateHistory.find((h) => h.date === date);
+      if (clash) { if (!confirm(`${date} 금리가 이미 있습니다. 덮어쓸까요?`)) return; clash.rate = v; }
+      else l.rateHistory.push({ date, rate: v });
+      save(); openLoanDetail(id); renderAll();
+    });
+  }
+
+  /* ---------- 자산 추가/수정 폼 ---------- */
+  function openAssetForm(id) {
+    const a = id ? state.assets.find((x) => x.id === id) : null;
+    const isNew = !a;
+    const html = `
+      <div class="field"><label>이름</label><input id="fName" value="${a ? escapeHtml(a.name) : ''}" placeholder="예: 래미안 아파트"></div>
+      <div class="frow">
+        <div class="field"><label>분류</label><select id="fCat">
+          ${CAT_ORDER.map((c) => `<option value="${c}" ${a && a.category === c ? 'selected' : ''}>${CAT_LABEL[c]}</option>`).join('')}
+        </select></div>
+        <div class="field"><label>세부유형</label><input id="fSub" value="${a ? escapeHtml(a.subType || '') : ''}" placeholder="아파트/주식/예금 등"></div>
+      </div>
+      ${isNew ? `<div class="frow">
+        <div class="field"><label>최초 기록일</label><input type="date" id="fDate" value="${todayISO()}"></div>
+        <div class="field num"><label>현재 금액(원)</label><input id="fAmt" inputmode="numeric" placeholder="0"></div>
+      </div>` : ''}
+      <button class="btn-primary" id="fSave">${isNew ? '자산 추가' : '저장'}</button>
+      ${isNew ? '' : '<button class="btn-ghost" id="fDel">이 자산 삭제</button>'}
+    `;
+    openSheet(isNew ? '자산 추가' : '자산 수정', html);
+    document.getElementById('fSave').addEventListener('click', () => {
+      const name = document.getElementById('fName').value.trim();
+      if (!name) { toast('이름을 입력하세요'); return; }
+      const cat = document.getElementById('fCat').value;
+      const sub = document.getElementById('fSub').value.trim();
+      if (isNew) {
+        const date = document.getElementById('fDate').value;
+        if (!validDate(date)) { toast('날짜를 확인하세요'); return; }
+        const amt = parseAmount(document.getElementById('fAmt').value);
+        state.assets.push({ id: uuid(), name, category: cat, subType: sub, records: [{ date, amount: amt, note: '' }] });
+      } else {
+        a.name = name; a.category = cat; a.subType = sub;
+      }
+      save(); renderAll(); closeSheet(); toast(isNew ? '자산이 추가되었습니다' : '저장되었습니다');
+    });
+    if (!isNew) document.getElementById('fDel').addEventListener('click', () => deleteAsset(id));
+  }
+
+  /* ---------- 대출 추가/수정 폼 ---------- */
+  function openLoanForm(id) {
+    const l = id ? state.loans.find((x) => x.id === id) : null;
+    const isNew = !l;
+    const html = `
+      <div class="field"><label>이름</label><input id="fName" value="${l ? escapeHtml(l.name) : ''}" placeholder="예: 주택담보대출"></div>
+      <div class="field"><label>대출기관</label><input id="fLender" value="${l ? escapeHtml(l.lender || '') : ''}" placeholder="예: 국민은행"></div>
+      <div class="frow">
+        <div class="field"><label>금리유형</label><select id="fRateType">
+          <option value="fixed" ${l && l.rateType === 'fixed' ? 'selected' : ''}>고정금리</option>
+          <option value="variable" ${l && l.rateType === 'variable' ? 'selected' : ''}>변동금리</option>
+        </select></div>
+        <div class="field"><label>상환방식</label><select id="fRepay">
+          <option value="bullet" ${l && l.repaymentType === 'bullet' ? 'selected' : ''}>만기일시상환</option>
+          <option value="equal_payment" ${l && l.repaymentType === 'equal_payment' ? 'selected' : ''}>원리금균등</option>
+          <option value="equal_principal" ${l && l.repaymentType === 'equal_principal' ? 'selected' : ''}>원금균등</option>
+        </select></div>
+      </div>
+      <div class="frow">
+        <div class="field"><label>개시일</label><input type="date" id="fStart" value="${l ? l.startDate : todayISO()}"></div>
+        <div class="field"><label>만기일</label><input type="date" id="fMaturity" value="${l ? l.maturityDate : ''}"></div>
+      </div>
+      ${isNew ? `<div class="frow">
+        <div class="field num"><label>현재 잔액(원)</label><input id="fBal" inputmode="numeric" placeholder="0"></div>
+        <div class="field num"><label>연이율(%)</label><input id="fRate" inputmode="decimal" placeholder="3.50"></div>
+      </div>` : ''}
+      <button class="btn-primary" id="fSave">${isNew ? '대출 추가' : '저장'}</button>
+      ${isNew ? '' : '<button class="btn-ghost" id="fDel">이 대출 삭제</button>'}
+    `;
+    openSheet(isNew ? '대출 추가' : '대출 수정', html);
+    document.getElementById('fSave').addEventListener('click', () => {
+      const name = document.getElementById('fName').value.trim();
+      if (!name) { toast('이름을 입력하세요'); return; }
+      const lender = document.getElementById('fLender').value.trim();
+      const rateType = document.getElementById('fRateType').value;
+      const repay = document.getElementById('fRepay').value;
+      const start = document.getElementById('fStart').value;
+      const maturity = document.getElementById('fMaturity').value;
+      if (!validDate(start) || !validDate(maturity)) { toast('개시일·만기일을 확인하세요'); return; }
+      if (maturity <= start) { toast('만기일은 개시일 이후여야 합니다'); return; }
+      if (isNew) {
+        const bal = parseAmount(document.getElementById('fBal').value);
+        const rate = parseFloat(String(document.getElementById('fRate').value).replace(/[,\s%]/g, '')) || 0;
+        state.loans.push({
+          id: uuid(), name, lender, rateType, repaymentType: repay,
+          startDate: start, maturityDate: maturity,
+          rateHistory: [{ date: start, rate: Math.max(0, rate) }],
+          records: [{ date: todayISO(), balance: bal, note: '' }]
+        });
+      } else {
+        l.name = name; l.lender = lender; l.rateType = rateType; l.repaymentType = repay;
+        l.startDate = start; l.maturityDate = maturity;
+      }
+      save(); renderAll(); closeSheet(); toast(isNew ? '대출이 추가되었습니다' : '저장되었습니다');
+    });
+    if (!isNew) document.getElementById('fDel').addEventListener('click', () => deleteLoan(id));
+  }
+
+  /* ---------- 삭제 ---------- */
+  function deleteAsset(id) {
+    const a = state.assets.find((x) => x.id === id);
+    if (!a) return;
+    if (!confirm(`'${a.name}' 자산과 모든 기록을 삭제할까요?`)) return;
+    state.assets = state.assets.filter((x) => x.id !== id);
+    save(); renderAll(); closeSheet(); toast('삭제되었습니다');
+  }
+  function deleteLoan(id) {
+    const l = state.loans.find((x) => x.id === id);
+    if (!l) return;
+    if (!confirm(`'${l.name}' 대출과 모든 기록을 삭제할까요?`)) return;
+    state.loans = state.loans.filter((x) => x.id !== id);
+    save(); renderAll(); closeSheet(); toast('삭제되었습니다');
+  }
+
+  /* ============================================================
+     데이터 관리 (내보내기/가져오기/초기화)
+     ============================================================ */
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `자산관리-${todayISO()}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast('JSON으로 내보냈습니다');
+  });
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data || !Array.isArray(data.assets) || !Array.isArray(data.loans)) throw new Error('형식 오류');
+        if (!confirm('현재 데이터를 가져온 파일로 교체할까요?')) return;
+        state = { assets: data.assets, loans: data.loans };
+        save(); renderAll(); toast('가져오기 완료');
+      } catch (err) { toast('가져오기 실패: 올바른 JSON이 아닙니다'); }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (!confirm('모든 데이터를 삭제하고 초기화할까요? 되돌릴 수 없습니다.')) return;
+    if (!confirm('정말 전체 초기화하시겠습니까?')) return;
+    localStorage.removeItem(STORE_KEY);
+    state = { assets: [], loans: [] };
+    renderAll(); closeSheet(); toast('초기화되었습니다');
+  });
+
+  document.getElementById('addAssetBtn').addEventListener('click', () => openAssetForm(null));
+  document.getElementById('addLoanBtn').addEventListener('click', () => openLoanForm(null));
+
+  /* ---------- 토스트 ---------- */
+  let toastTimer = null;
+  function toast(msg, actionLabel, actionFn) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    const btn = document.getElementById('toastAction');
+    if (actionLabel) { btn.textContent = actionLabel; btn.classList.remove('hidden'); btn.onclick = actionFn; }
+    else btn.classList.add('hidden');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    if (!actionLabel) toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  /* ============================================================
+     PWA: 설치 / 서비스워커
+     ============================================================ */
+  // beforeinstallprompt 가로채 "앱 설치" 버튼 노출 (안드로이드 Chrome)
+  let deferredPrompt = null;
+  const installBtn = document.getElementById('installBtn');
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isStandalone()) installBtn.classList.remove('hidden');
+  });
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBtn.classList.add('hidden');
+    if (outcome === 'accepted') toast('앱이 설치되었습니다');
+  });
+  window.addEventListener('appinstalled', () => { installBtn.classList.add('hidden'); toast('홈 화면에 추가되었습니다'); });
+  if (isStandalone()) installBtn.classList.add('hidden');
+
+  // 서비스워커 등록 + 새 버전 감지
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('새 버전이 있습니다', '새로고침', () => { nw.postMessage('SKIP_WAITING'); location.reload(); });
+            }
+          });
+        });
+      }).catch((err) => console.warn('SW 등록 실패', err));
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return; refreshing = true; location.reload();
+      });
+    });
+  }
+
+  /* ============================================================
+     초기화
+     ============================================================ */
+  if (!load()) seed();      // 최초 실행 시 샘플 데이터
+  renderAll();
+  </script>
+</body>
+</html>
