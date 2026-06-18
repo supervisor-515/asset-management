@@ -27,6 +27,9 @@
       --line: #E4DDCD;
       --gold: #C19A4C;
       --gold-soft: #E7D6AD;
+      --accent-soft: #FBF6EA;  /* 선택 항목 배경 */
+      --btn-bg: #3A4A3F;    /* 강조 버튼 배경(두 테마 모두 어두운 초록) */
+      --btn-fg: #E7D6AD;    /* 강조 버튼 글자 */
       --asset: #2E7D6B;     /* 청록/올리브 자산 */
       --asset-2: #6FA292;
       --loan: #B05A4F;      /* 절제된 적색 부채 */
@@ -46,6 +49,9 @@
       --line: #36413A;
       --gold: #D6B36A;
       --gold-soft: #E7D6AD;
+      --accent-soft: #33402F;
+      --btn-bg: #44544A;
+      --btn-fg: #EAD9B0;
       --asset: #5BA993;
       --asset-2: #6FA292;
       --loan: #D98A7D;
@@ -83,7 +89,7 @@
       display: flex; align-items: center; gap: 10px;
     }
     .topbar .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
-    .brand .dot { width: 24px; height: 24px; border-radius: 7px; background: var(--ink); color: var(--gold); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+    .brand .dot { width: 24px; height: 24px; border-radius: 7px; background: var(--btn-bg); color: var(--gold); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
     .topbar .spacer { flex: 1; }
 
     .icon-btn {
@@ -92,7 +98,7 @@
       display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
     }
     .icon-btn:hover { border-color: var(--gold); }
-    #installBtn { background: var(--ink); color: var(--gold-soft); border-color: var(--ink); }
+    #installBtn { background: var(--btn-bg); color: var(--btn-fg); border-color: var(--btn-bg); }
     .hidden { display: none !important; }
 
     .grid { display: grid; gap: 14px; }
@@ -124,7 +130,7 @@
     .list-head { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; }
     .list-head h2 { font-size: 17px; }
     .list-head .spacer { flex: 1; }
-    .btn-add { background: var(--ink); color: var(--gold-soft); border: 1px solid var(--ink); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 700; }
+    .btn-add { background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-bg); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 700; }
     .btn-add.loan { background: var(--card); color: var(--loan); border-color: var(--loan); }
 
     .group-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 16px 4px 8px; display: flex; align-items: center; gap: 7px; }
@@ -173,19 +179,19 @@
     .ts td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
     .ts input { width: 100%; border: 1px solid transparent; background: transparent; padding: 7px 8px; border-radius: 8px; font: inherit; color: var(--ink); }
     .ts input:hover { border-color: var(--line); }
-    .ts input:focus { outline: none; border-color: var(--gold); background: #fff; }
+    .ts input:focus { outline: none; border-color: var(--gold); background: var(--card); }
     .ts input.num { text-align: right; }
     .ts .del { border: none; background: none; color: var(--muted); font-size: 16px; padding: 4px 6px; border-radius: 6px; }
     .ts .del:hover { color: var(--down); background: #F6E6E3; }
     .ts tr.addrow { background: var(--paper-2); }
-    .ts tr.addrow input { border-color: var(--line); background: #fff; }
+    .ts tr.addrow input { border-color: var(--line); background: var(--card); }
     .colw-date { width: 130px; } .colw-act { width: 34px; }
 
     /* 필드 */
     .field { margin-bottom: 12px; }
     .field label { display: block; font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-bottom: 5px; }
     .field input, .field select {
-      width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: 10px;
       padding: 10px 12px; font: inherit; color: var(--ink);
     }
     .field input:focus, .field select:focus { outline: none; border-color: var(--gold); }
@@ -202,19 +208,19 @@
     .ical .line.total { border-top: 1px dashed var(--line); margin-top: 6px; padding-top: 10px; }
     .ical .warn { color: var(--down); font-size: 12.5px; margin-top: 8px; font-weight: 600; }
 
-    .btn-primary { width: 100%; background: var(--ink); color: var(--gold-soft); border: none; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 8px; }
+    .btn-primary { width: 100%; background: var(--btn-bg); color: var(--btn-fg); border: none; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; margin-top: 8px; }
     .btn-ghost { width: 100%; background: transparent; color: var(--down); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 600; margin-top: 10px; }
     .btn-ghost:hover { border-color: var(--down); }
 
     /* 토스트 */
     .toast {
       position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
-      background: var(--ink); color: #F4EEE1; padding: 12px 18px; border-radius: 12px;
+      background: var(--btn-bg); color: #F4EEE1; padding: 12px 18px; border-radius: 12px;
       font-size: 14px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.25);
       z-index: 100; opacity: 0; pointer-events: none; transition: all .25s; display: flex; align-items: center; gap: 12px;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
-    .toast button { background: var(--gold); color: var(--ink); border: none; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; }
+    .toast button { background: var(--gold); color: #2A332C; border: none; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; }
 
     .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
 
@@ -225,11 +231,11 @@
     .chip.clear { color: var(--down); }
     .modes { display: flex; gap: 8px; margin-bottom: 12px; }
     .seg { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 7px 16px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
-    .seg.on { background: var(--ink); color: var(--gold-soft); border-color: var(--ink); }
+    .seg.on { background: var(--btn-bg); color: var(--btn-fg); border-color: var(--btn-bg); }
     .checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin-bottom: 14px; padding: 2px; }
     .checkitem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); cursor: pointer; user-select: none; }
     .checkitem:hover { border-color: var(--gold); }
-    .checkitem.on { border-color: var(--gold); background: #FBF6EA; font-weight: 600; }
+    .checkitem.on { border-color: var(--gold); background: var(--accent-soft); font-weight: 600; }
     .checkitem input { accent-color: var(--ink); width: 14px; height: 14px; flex-shrink: 0; }
     .checkitem .tag { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
     .checkitem span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -258,7 +264,7 @@
     .period { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
     .period .lab { font-size: 12px; color: var(--muted); margin-right: 2px; }
     .seg-sm { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 4px 11px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
-    .seg-sm.on { background: var(--ink); color: var(--gold-soft); border-color: var(--ink); }
+    .seg-sm.on { background: var(--btn-bg); color: var(--btn-fg); border-color: var(--btn-bg); }
 
     /* 목록 검색·정렬 바 */
     .listbar { display: flex; gap: 8px; margin: 4px 0 10px; width: 100%; }
@@ -475,7 +481,7 @@
   // 큰 금액 축약 (억/조 자동) — 차트 축·게이지용
   function fmtShort(n) {
     const v = Number(n) || 0, a = Math.abs(v);
-    if (a >= 1e12) return (v / 1e12).toFixed(a >= 1e13 ? 0 : 1) + '조';
+    if (a >= 1e12) return (v / 1e12).toFixed(a >= 1e13 ? 1 : 2) + '조';
     if (a >= 1e8) return (v / 1e8).toFixed(a >= 1e9 ? 0 : 1) + '억';
     if (a >= 1e4) return Math.round(v / 1e4) + '만';
     return String(Math.round(v));

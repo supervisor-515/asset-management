@@ -1,7 +1,7 @@
 /* 자산관리 PWA 서비스워커
  * 앱 셸을 프리캐시하여 오프라인 동작을 보장한다.
  * 캐시를 갱신하려면 아래 CACHE 버전을 올려서 다시 배포한다. */
-const CACHE = 'asset-app-v4';
+const CACHE = 'asset-app-v5';
 
 /* 앱 셸: 로컬 자산 + 외부 CDN(차트·폰트) */
 const APP_SHELL = [
