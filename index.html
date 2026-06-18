@@ -200,6 +200,24 @@
 
     .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
 
+    /* 커스텀 그래프 */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .chip { border: 1px solid var(--line); background: var(--paper-2); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+    .chip:hover { border-color: var(--gold); color: var(--ink); }
+    .chip.clear { color: var(--down); }
+    .modes { display: flex; gap: 8px; margin-bottom: 12px; }
+    .seg { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 7px 16px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+    .seg.on { background: var(--ink); color: var(--gold-soft); border-color: var(--ink); }
+    .checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; margin-bottom: 14px; max-height: 210px; overflow-y: auto; padding: 2px; }
+    .checkitem { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); cursor: pointer; user-select: none; }
+    .checkitem:hover { border-color: var(--gold); }
+    .checkitem.on { border-color: var(--gold); background: #FBF6EA; font-weight: 600; }
+    .checkitem input { accent-color: var(--ink); width: 15px; height: 15px; flex-shrink: 0; }
+    .checkitem .tag { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
+    .checkitem span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .check-group { grid-column: 1 / -1; font-size: 11px; font-weight: 700; color: var(--muted); margin: 6px 2px 0; letter-spacing: .02em; }
+    .custom-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 10px; }
+
     @media (max-width: 720px) {
       .dash { grid-template-columns: 1fr; }
       .hero .net { font-size: 32px; }
@@ -243,6 +261,17 @@
     <div class="card" style="margin-top:14px">
       <h2>순자산 추이</h2>
       <div class="chartbox line"><canvas id="trend"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>커스텀 그래프 <span style="font-weight:500;color:var(--muted);font-size:12px">— 원하는 항목만 골라서</span></h2>
+      <div class="chips" id="customPresets"></div>
+      <div class="modes">
+        <button class="seg" id="modeIndividual" data-mode="individual">개별 비교</button>
+        <button class="seg" id="modeSum" data-mode="sum">합산</button>
+      </div>
+      <div class="checklist" id="customChecks"></div>
+      <div class="chartbox line"><canvas id="customChart"></canvas></div>
     </div>
 
     <!-- 목록 -->
@@ -550,6 +579,161 @@
     });
   }
 
+  /* ---------- 커스텀 그래프 ---------- */
+  const VIEW_KEY = 'asset-app-view';
+  const ASSET_PALETTE = ['#2E7D6B', '#6FA292', '#C19A4C', '#4E8A78', '#A88C4E', '#8FB3A6', '#3F6B5E', '#D2B36A'];
+  const LOAN_PALETTE = ['#B05A4F', '#C97A6E', '#9E4438', '#D89A8F'];
+  let customSel = new Set();          // 선택된 항목 id
+  let customMode = 'individual';      // 'individual' | 'sum'
+  let customChart = null;
+
+  function getItemById(id) {
+    const a = state.assets.find((x) => x.id === id);
+    if (a) return { kind: 'asset', obj: a, field: 'amount' };
+    const l = state.loans.find((x) => x.id === id);
+    if (l) return { kind: 'loan', obj: l, field: 'balance' };
+    return null;
+  }
+  function saveView() {
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify({ sel: [...customSel], mode: customMode })); } catch (e) {}
+  }
+  function loadView() {
+    try {
+      const v = JSON.parse(localStorage.getItem(VIEW_KEY));
+      if (v) { customSel = new Set(v.sel || []); customMode = v.mode === 'sum' ? 'sum' : 'individual'; return true; }
+    } catch (e) {}
+    return false;
+  }
+
+  const PRESETS = [
+    { label: '전체 자산', mode: 'individual', ids: () => state.assets.map((a) => a.id) },
+    { label: '부동산', mode: 'individual', ids: () => state.assets.filter((a) => a.category === 'real_estate').map((a) => a.id) },
+    { label: '금융자산', mode: 'individual', ids: () => state.assets.filter((a) => a.category === 'financial').map((a) => a.id) },
+    { label: '현금성', mode: 'individual', ids: () => state.assets.filter((a) => a.category === 'cash').map((a) => a.id) },
+    { label: '부채(대출)', mode: 'individual', ids: () => state.loans.map((l) => l.id) },
+    { label: '순자산(전체 합산)', mode: 'sum', ids: () => [...state.assets.map((a) => a.id), ...state.loans.map((l) => l.id)] }
+  ];
+
+  function renderCustom() {
+    [...customSel].forEach((id) => { if (!getItemById(id)) customSel.delete(id); }); // 삭제된 항목 정리
+
+    // 프리셋 칩
+    const pc = document.getElementById('customPresets');
+    pc.innerHTML = '';
+    PRESETS.forEach((p) => {
+      if (!p.ids().length) return;
+      const b = document.createElement('button');
+      b.className = 'chip'; b.textContent = p.label;
+      b.addEventListener('click', () => { customSel = new Set(p.ids()); customMode = p.mode; renderCustom(); });
+      pc.appendChild(b);
+    });
+    const clr = document.createElement('button');
+    clr.className = 'chip clear'; clr.textContent = '선택 해제';
+    clr.addEventListener('click', () => { customSel.clear(); renderCustom(); });
+    pc.appendChild(clr);
+
+    // 모드 토글
+    document.getElementById('modeIndividual').classList.toggle('on', customMode === 'individual');
+    document.getElementById('modeSum').classList.toggle('on', customMode === 'sum');
+
+    // 체크리스트 (자산: 카테고리별, 그다음 대출)
+    const cl = document.getElementById('customChecks');
+    cl.innerHTML = '';
+    const addItem = (id, name, color) => {
+      const on = customSel.has(id);
+      const lab = document.createElement('label');
+      lab.className = 'checkitem' + (on ? ' on' : '');
+      lab.innerHTML = `<input type="checkbox" ${on ? 'checked' : ''}><span class="tag" style="background:${color}"></span><span class="nm">${escapeHtml(name)}</span>`;
+      lab.querySelector('input').addEventListener('change', (e) => {
+        if (e.target.checked) customSel.add(id); else customSel.delete(id);
+        lab.classList.toggle('on', e.target.checked);
+        drawCustom(); saveView();
+      });
+      cl.appendChild(lab);
+    };
+    let ai = 0, li = 0;
+    CAT_ORDER.forEach((cat) => {
+      const items = state.assets.filter((a) => a.category === cat);
+      if (!items.length) return;
+      const g = document.createElement('div'); g.className = 'check-group'; g.textContent = CAT_LABEL[cat];
+      cl.appendChild(g);
+      items.forEach((a) => addItem(a.id, a.name, ASSET_PALETTE[ai++ % ASSET_PALETTE.length]));
+    });
+    if (state.loans.length) {
+      const g = document.createElement('div'); g.className = 'check-group'; g.textContent = '대출(부채)';
+      cl.appendChild(g);
+      state.loans.forEach((l) => addItem(l.id, l.name, LOAN_PALETTE[li++ % LOAN_PALETTE.length]));
+    }
+    if (!state.assets.length && !state.loans.length) {
+      cl.innerHTML = '<div class="custom-empty">항목을 추가하면 여기서 골라 그래프를 만들 수 있어요.</div>';
+    }
+
+    drawCustom();
+    saveView();
+  }
+
+  function customDates(ids) {
+    const s = new Set();
+    ids.forEach((id) => { const it = getItemById(id); if (it) (it.obj.records || []).forEach((r) => s.add(r.date)); });
+    return [...s].filter(validDate).sort();
+  }
+
+  function drawCustom() {
+    if (customChart) { customChart.destroy(); customChart = null; }
+    const ctx = document.getElementById('customChart');
+    const ids = [...customSel].filter((id) => getItemById(id));
+    const dates = customDates(ids);
+    if (!ids.length || !dates.length) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
+
+    let datasets;
+    if (customMode === 'sum') {
+      const hasA = ids.some((id) => getItemById(id).kind === 'asset');
+      const hasL = ids.some((id) => getItemById(id).kind === 'loan');
+      let data = dates.map((t) => ids.reduce((sum, id) => {
+        const it = getItemById(id);
+        const v = valueAtDate(it.obj.records, it.field, t);
+        return sum + (it.kind === 'asset' ? v : -v);
+      }, 0));
+      let label = '합계', color = '#3A4A3F';
+      if (hasA && hasL) { label = '순액 (자산 − 부채)'; color = '#3A4A3F'; }
+      else if (hasA) { label = '자산 합계'; color = '#2E7D6B'; }
+      else { label = '부채 합계'; color = '#B05A4F'; data = data.map((v) => -v); }
+      datasets = [{ label, data, borderColor: color, backgroundColor: color + '22', fill: true, tension: .25, pointRadius: 3, pointBackgroundColor: color, borderWidth: 2 }];
+    } else {
+      let ai = 0, li = 0;
+      datasets = ids.map((id) => {
+        const it = getItemById(id);
+        const color = it.kind === 'asset' ? ASSET_PALETTE[ai++ % ASSET_PALETTE.length] : LOAN_PALETTE[li++ % LOAN_PALETTE.length];
+        return {
+          label: (it.kind === 'loan' ? '🔻 ' : '') + it.obj.name,
+          data: dates.map((t) => valueAtDate(it.obj.records, it.field, t)),
+          borderColor: color, backgroundColor: color + '15', fill: false, tension: .25,
+          pointRadius: 2, borderWidth: 2, borderDash: it.kind === 'loan' ? [5, 3] : []
+        };
+      });
+    }
+
+    customChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: dates, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Pretendard', size: 12 }, color: '#5B6B60', padding: 12, usePointStyle: true, boxWidth: 8 } },
+          tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${fmtWon(c.parsed.y)}` } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8A9089', maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+          y: { grid: { color: '#EFE9DA' }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8A9089', callback: (v) => (v / 100000000).toFixed(1) + '억' } }
+        }
+      }
+    });
+  }
+
+  // 모드 버튼
+  document.getElementById('modeIndividual').addEventListener('click', () => { customMode = 'individual'; renderCustom(); });
+  document.getElementById('modeSum').addEventListener('click', () => { customMode = 'sum'; renderCustom(); });
+
   function renderList() {
     const area = document.getElementById('listArea');
     area.innerHTML = '';
@@ -644,7 +828,7 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function renderAll() { renderDashboard(); renderList(); }
+  function renderAll() { renderDashboard(); renderList(); renderCustom(); }
 
   /* ============================================================
      시트(상세/폼)
@@ -1088,6 +1272,10 @@
      초기화
      ============================================================ */
   if (!load()) seed();      // 최초 실행 시 샘플 데이터
+  if (!loadView()) {        // 커스텀 그래프 기본값: 전체 자산 개별 비교
+    customSel = new Set(state.assets.map((a) => a.id));
+    customMode = 'individual';
+  }
   renderAll();
   </script>
 </body>
