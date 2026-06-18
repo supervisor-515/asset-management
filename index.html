@@ -55,7 +55,7 @@
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { margin: 0; padding: 0; }
+    html, body { margin: 0; padding: 0; overflow-x: hidden; max-width: 100%; }
     body {
       font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       background: var(--paper);
@@ -139,8 +139,8 @@
       transition: border-color .12s;
     }
     .row:hover { border-color: var(--gold); }
-    .row .name { font-weight: 700; letter-spacing: -.01em; }
-    .row .sub { font-size: 12px; color: var(--muted); grid-column: 1; }
+    .row .name { font-weight: 700; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .sub { font-size: 12px; color: var(--muted); grid-column: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row .amount { font-size: 17px; font-weight: 700; text-align: right; letter-spacing: -.02em; }
     .row .amount.loan { color: var(--loan); }
     .row .chg { font-size: 12px; text-align: right; grid-column: 2; }
@@ -261,10 +261,10 @@
     .seg-sm.on { background: var(--ink); color: var(--gold-soft); border-color: var(--ink); }
 
     /* 목록 검색·정렬 바 */
-    .listbar { display: flex; gap: 8px; margin: 4px 0 10px; }
-    .listbar input { flex: 1; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 12px; font: inherit; }
+    .listbar { display: flex; gap: 8px; margin: 4px 0 10px; width: 100%; }
+    .listbar input { flex: 1 1 auto; min-width: 0; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 12px; font: inherit; }
     .listbar input:focus { outline: none; border-color: var(--gold); }
-    .listbar select { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 10px; font: inherit; }
+    .listbar select { flex: 0 0 auto; max-width: 42%; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 10px; font: inherit; }
     .group-title { cursor: pointer; }
     .group-title .chev { margin-left: auto; color: var(--muted); transition: transform .15s; font-size: 11px; }
     .group-title.collapsed .chev { transform: rotate(-90deg); }
