@@ -108,10 +108,10 @@
     .card h2 { font-size: 14px; color: var(--ink-soft); font-weight: 700; letter-spacing: -.01em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 
     /* 대시보드 */
-    .dash { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+    .dash { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; align-items: start; }
     .hero { background: linear-gradient(155deg, #3F5046, #33433A); color: #F4EEE1; border: none; }
     .hero .label { font-size: 13px; color: #BFC9C0; letter-spacing: .02em; }
-    .hero .net { font-size: 38px; font-weight: 800; letter-spacing: -.03em; margin: 4px 0 2px; }
+    .hero .net { font-size: clamp(24px, 5.2vw, 38px); font-weight: 800; letter-spacing: -.03em; margin: 4px 0 2px; word-break: keep-all; }
     .hero .delta { font-size: 14px; font-weight: 600; }
     .hero .split { display: flex; gap: 22px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.14); }
     .hero .split .k { font-size: 12px; color: #BFC9C0; }
@@ -123,8 +123,9 @@
     .hero .up { color: #9FE0BE; }
     .hero .down { color: #F0B4AC; }
 
-    .chartbox { position: relative; height: 200px; }
+    .chartbox { position: relative; height: 220px; }
     .chartbox.line { height: 240px; }
+    .chartbox.donut { height: 260px; }
 
     /* 목록 */
     .list-head { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; }
@@ -324,7 +325,7 @@
       </div>
       <div class="card">
         <h2>자산 구성</h2>
-        <div class="chartbox"><canvas id="donut"></canvas></div>
+        <div class="chartbox donut"><canvas id="donut"></canvas></div>
       </div>
     </section>
 
@@ -860,6 +861,7 @@
       data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: th.card, borderWidth: 2 }] },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '62%',
+        layout: { padding: 10 },
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: 'Pretendard', size: 12 }, color: th.tick, padding: 12, usePointStyle: true } },
           tooltip: { callbacks: { label: (c) => ` ${c.label}: ${fmtWon(c.parsed)} (${sum ? (c.parsed / sum * 100).toFixed(1) : 0}%)` } }
