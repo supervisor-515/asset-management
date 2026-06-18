@@ -235,6 +235,7 @@
     .checkitem span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .check-group { grid-column: 1 / -1; font-size: 11px; font-weight: 700; color: var(--muted); margin: 6px 2px 0; letter-spacing: .02em; }
     .custom-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 10px; }
+    .charthint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
 
     /* 목표 게이지 (hero) */
     .goal { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.14); }
@@ -336,6 +337,7 @@
         <button class="seg-sm" data-p="all">전체</button>
       </div>
       <div class="chartbox line"><canvas id="trend"></canvas></div>
+      <div class="charthint hidden" id="trendHint"></div>
     </div>
 
     <div class="card" style="margin-top:14px">
@@ -347,6 +349,7 @@
       </div>
       <div class="checklist" id="customChecks"></div>
       <div class="chartbox line"><canvas id="customChart"></canvas></div>
+      <div class="charthint hidden" id="customHint"></div>
     </div>
 
     <!-- 목록 -->
@@ -859,11 +862,20 @@
     });
   }
 
+  function setHint(elId, show) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (show) { el.textContent = '📍 기록이 1건뿐이라 점으로만 표시됩니다. 날짜를 추가하면 추이 선이 그려져요.'; el.classList.remove('hidden'); }
+    else el.classList.add('hidden');
+  }
+
   function renderTrend(series) {
     if (trendChart) trendChart.destroy();
     const ctx = document.getElementById('trend');
-    if (series.length < 1) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
+    if (series.length < 1) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); setHint('trendHint', false); return; }
     const th = chartTheme();
+    const single = series.length < 2;
+    setHint('trendHint', single);
     trendChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -871,7 +883,7 @@
         datasets: [{
           label: '순자산', data: series.map((s) => s.net),
           borderColor: '#3A4A3F', backgroundColor: 'rgba(58,74,63,.08)',
-          fill: true, tension: .25, pointRadius: 3, pointBackgroundColor: '#C19A4C', borderWidth: 2
+          fill: true, tension: .25, pointRadius: single ? 6 : 3, pointBackgroundColor: '#C19A4C', borderWidth: 2
         }]
       },
       options: {
@@ -991,7 +1003,9 @@
     const cutoff = cutoffFor(chartPeriod);
     let dates = customDates(ids);
     if (cutoff) dates = dates.filter((d) => d >= cutoff);
-    if (!ids.length || !dates.length) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
+    if (!ids.length || !dates.length) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); setHint('customHint', false); return; }
+    const single = dates.length < 2;
+    setHint('customHint', single);
 
     let datasets;
     if (customMode === 'sum') {
@@ -1006,7 +1020,7 @@
       if (hasA && hasL) { label = '순액 (자산 − 부채)'; color = '#3A4A3F'; }
       else if (hasA) { label = '자산 합계'; color = '#2E7D6B'; }
       else { label = '부채 합계'; color = '#B05A4F'; data = data.map((v) => -v); }
-      datasets = [{ label, data, borderColor: color, backgroundColor: color + '22', fill: true, tension: .25, pointRadius: 3, pointBackgroundColor: color, borderWidth: 2 }];
+      datasets = [{ label, data, borderColor: color, backgroundColor: color + '22', fill: true, tension: .25, pointRadius: single ? 6 : 3, pointBackgroundColor: color, borderWidth: 2 }];
     } else {
       let ai = 0, li = 0;
       datasets = ids.map((id) => {
@@ -1016,7 +1030,7 @@
           label: (it.kind === 'loan' ? '🔻 ' : '') + it.obj.name,
           data: dates.map((t) => valueAtDate(it.obj.records, it.field, t)),
           borderColor: color, backgroundColor: color + '15', fill: false, tension: .25,
-          pointRadius: 2, borderWidth: 2, borderDash: it.kind === 'loan' ? [5, 3] : []
+          pointRadius: single ? 6 : 2, borderWidth: 2, borderDash: it.kind === 'loan' ? [5, 3] : []
         };
       });
     }
@@ -1441,7 +1455,9 @@
         const date = document.getElementById('fDate').value;
         if (!validDate(date)) { toast('날짜를 확인하세요'); return; }
         const amt = parseAmount(document.getElementById('fAmt').value);
-        state.assets.push({ id: uuid(), name, category: cat, subType: sub, principal: pr > 0 ? pr : null, records: [{ date, amount: amt, note: '' }] });
+        const nid = uuid();
+        state.assets.push({ id: nid, name, category: cat, subType: sub, principal: pr > 0 ? pr : null, records: [{ date, amount: amt, note: '' }] });
+        customSel.add(nid); saveView();
       } else {
         a.name = name; a.category = cat; a.subType = sub; a.principal = pr > 0 ? pr : null;
       }
@@ -1494,12 +1510,14 @@
       if (isNew) {
         const bal = parseAmount(document.getElementById('fBal').value);
         const rate = parseFloat(String(document.getElementById('fRate').value).replace(/[,\s%]/g, '')) || 0;
+        const nid = uuid();
         state.loans.push({
-          id: uuid(), name, lender, rateType, repaymentType: repay,
+          id: nid, name, lender, rateType, repaymentType: repay,
           startDate: start, maturityDate: maturity,
           rateHistory: [{ date: start, rate: Math.max(0, rate) }],
           records: [{ date: todayISO(), balance: bal, note: '' }]
         });
+        customSel.add(nid); saveView();
       } else {
         l.name = name; l.lender = lender; l.rateType = rateType; l.repaymentType = repay;
         l.startDate = start; l.maturityDate = maturity;
