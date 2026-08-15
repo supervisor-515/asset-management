@@ -1,7 +1,7 @@
 /* 자산관리 PWA 서비스워커
  * 앱 셸을 프리캐시하여 오프라인 동작을 보장한다.
  * 캐시를 갱신하려면 아래 CACHE 버전을 올려서 다시 배포한다. */
-const CACHE = 'asset-app-v6';
+const CACHE = 'asset-app-v7';
 
 /* 앱 셸: 로컬 자산 + 외부 CDN(차트·폰트) */
 const APP_SHELL = [
@@ -42,7 +42,25 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // cache-first + 네트워크 폴백
+  /* 페이지(HTML) 요청은 network-first.
+   * 앱 화면은 항상 최신 배포를 먼저 받아오고, 네트워크가 없을 때만 캐시로 폴백한다.
+   * (cache-first로 두면 CACHE 버전을 올리기 전까지 옛 화면이 계속 표시된다) */
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put('./index.html', copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // 그 외 정적 자원: cache-first + 네트워크 폴백
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
