@@ -186,7 +186,16 @@
     .ts .del:hover { color: var(--down); background: #F6E6E3; }
     .ts tr.addrow { background: var(--paper-2); }
     .ts tr.addrow input { border-color: var(--line); background: var(--card); }
-    .colw-date { width: 130px; } .colw-act { width: 34px; }
+    .colw-date { width: 120px; } .colw-act { width: 34px; }
+    /* 날짜칸 축소: 여백·글자·달력 아이콘을 줄여 네이티브 date 위젯이 잘리지 않게 */
+    .colw-date input { padding-left: 4px; padding-right: 2px; font-size: 13px; }
+    .colw-date input::-webkit-calendar-picker-indicator { padding: 0; margin-left: 2px; width: 12px; opacity: .55; }
+    /* 터치 기기에선 입력칸을 눌러도 달력이 열리므로 아이콘을 숨겨 날짜 표시 공간 확보 */
+    @media (pointer: coarse) { .colw-date input::-webkit-calendar-picker-indicator { display: none; } }
+    /* 기록표는 고정 레이아웃 + 금액칸 확대 */
+    .ts.rec { table-layout: fixed; }
+    .ts.rec .colw-amt { width: 42%; }
+    .ts.rec .colw-amt input { font-variant-numeric: tabular-nums; }
 
     /* 필드 */
     .field { margin-bottom: 12px; }
@@ -294,6 +303,11 @@
       header.topbar { margin: 0 -12px 14px; padding: 11px 12px; }
       .frow { grid-template-columns: 1fr; }
       .topbar .label-txt { display: none; }
+      /* 좁은 화면: 날짜칸 더 줄이고 금액칸 더 확보 */
+      .colw-date { width: 112px; }
+      .colw-date input { font-size: 12px; padding-left: 3px; }
+      .ts td { padding: 4px 3px; }
+      .ts th { padding: 6px 3px; }
     }
   </style>
 </head>
@@ -1209,18 +1223,19 @@
     const rows = sorted.map((rec, i) => `
       <tr data-i="${i}">
         <td class="colw-date"><input type="date" value="${rec.date}" data-k="date"></td>
-        <td><input class="num" inputmode="numeric" value="${(Number(rec[field]) || 0).toLocaleString('ko-KR')}" data-k="${field}"></td>
+        <td class="colw-amt"><input class="num" inputmode="numeric" value="${(Number(rec[field]) || 0).toLocaleString('ko-KR')}" data-k="${field}"></td>
         <td><input value="${escapeHtml(rec.note || '')}" data-k="note" placeholder="메모"></td>
         <td class="colw-act"><button class="del" data-del="${i}" title="삭제">🗑</button></td>
       </tr>`).join('');
     return `
-      <table class="ts">
+      <table class="ts rec">
+        <colgroup><col class="colw-date"><col class="colw-amt"><col><col class="colw-act"></colgroup>
         <thead><tr><th>날짜</th><th style="text-align:right">${field === 'balance' ? '잔액' : '금액'}</th><th>메모</th><th></th></tr></thead>
         <tbody id="tsBody">
           ${rows || ''}
           <tr class="addrow">
             <td class="colw-date"><input type="date" id="newDate" value="${todayISO()}"></td>
-            <td><input class="num" id="newAmt" inputmode="numeric" placeholder="0"></td>
+            <td class="colw-amt"><input class="num" id="newAmt" inputmode="numeric" placeholder="0"></td>
             <td><input id="newNote" placeholder="새 기록 메모"></td>
             <td class="colw-act"><button class="del" id="tsAdd" title="추가" style="color:var(--asset)">＋</button></td>
           </tr>
